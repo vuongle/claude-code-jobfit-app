@@ -1,0 +1,82 @@
+{
+  "rubric_version": "1.0.0",
+  "description": "Scoring rubric for evaluating a CV against a job description. Categories, weights and measurements come from the cv-rubric skill; scoring rules below make each measurement explicit enough to be applied consistently at temperature 0.",
+  "score_scale": {
+    "min": 0,
+    "max": 100
+  },
+  "overall_score_rule": "overall_score = round(sum(category_score * category_weight / 100)). Category weights must sum to 100. The overall score is computed from the weighted categories, never assigned directly.",
+  "score_bands": [
+    {
+      "name": "strong",
+      "min": 75,
+      "max": 100,
+      "meaning": "The CV covers the core requirements of the JD. Remaining gaps are polish items."
+    },
+    {
+      "name": "partial",
+      "min": 50,
+      "max": 74,
+      "meaning": "The CV covers a meaningful part of the JD but misses several important requirements."
+    },
+    {
+      "name": "weak",
+      "min": 0,
+      "max": 49,
+      "meaning": "The CV misses most core requirements of the JD or targets a different role."
+    }
+  ],
+  "categories": [
+    {
+      "name": "Hard Skills Match",
+      "weight": 30,
+      "measurement": "Percentage of required hard skills in the JD that appear in the CV.",
+      "scoring_rule": "List the required hard skills named in the JD (tools, languages, frameworks, platforms). A skill counts as matched only when the CV names the skill itself or an explicitly equivalent variant (for example 'GA4' matches 'Google Analytics 4'; 'basic Python' matches Python at half credit). Partial credit of 50 is given for adjacent or entry-level evidence of a skill. score = round(100 * (full_matches + 0.5 * half_credits) / total_required_skills)."
+    },
+    {
+      "name": "Experience Match",
+      "weight": 25,
+      "measurement": "Alignment of years of experience and seniority/level with the JD requirements.",
+      "scoring_rule": "Start at 100 and apply evidence-based deductions: deduct 25 if the CV's years of relevant experience fall more than 1 year short of the JD requirement; deduct 25 if the seniority level evidenced in the CV is below the level the JD targets; deduct 20 if the CV shows no experience in the JD's core domain; deduct 10 if leadership or management duties the JD expects are not evidenced. Do not deduct below 0. score = 100 - total deductions."
+    },
+    {
+      "name": "ATS Keywords",
+      "weight": 20,
+      "measurement": "Percentage of industry-specific phrases from the JD that appear in the CV.",
+      "scoring_rule": "Collect the industry-specific phrases and terminology the JD uses beyond named tools (for example 'event-driven architecture', 'cost per acquisition', 'experiment design'). A phrase counts as matched when it, or a close literal variant, appears in the CV text. score = round(100 * matched_phrases / total_phrases)."
+    },
+    {
+      "name": "Quantified Achievements",
+      "weight": 15,
+      "measurement": "Percentage of CV bullets that contain measurable outcome numbers.",
+      "scoring_rule": "A bullet is quantified when it contains at least one concrete number representing an outcome, scale or improvement (counts, percentages, durations, currency). score = round(100 * quantified_bullets / total_bullets). Bullets describing duties with no measurable result do not count."
+    },
+    {
+      "name": "Formatting & Length",
+      "weight": 10,
+      "measurement": "Alignment of CV structure, readability, and length with the expectations of the JD.",
+      "scoring_rule": "Start at 100 and apply deductions: deduct 15 per missing standard section (contact details, experience, education, skills); deduct 15 if the CV exceeds roughly two pages of content; deduct 10 if section headings or ordering make the CV hard to scan; deduct 10 if bullets are dense paragraphs rather than scannable lines. Do not deduct below 0. score = 100 - total deductions."
+    }
+  ],
+  "gap_rules": {
+    "definition": "A gap is a JD requirement the CV gives no evidence of, or an area where the evidence is clearly weaker than what the JD asks for. Every gap must cite the missing requirement as evidence and give a concrete, non-fabricating suggestion.",
+    "severities": [
+      {
+        "name": "high",
+        "meaning": "A mandatory JD requirement with no supporting evidence in the CV, or a direct contradiction (for example, the JD requires management experience and the CV shows none)."
+      },
+      {
+        "name": "medium",
+        "meaning": "A secondary or preferred requirement with no supporting evidence, or a mandatory requirement where the CV shows only partial or adjacent evidence."
+      },
+      {
+        "name": "low",
+        "meaning": "A polish item: quantification missing on some bullets, a nice-to-have keyword absent, or minor formatting improvements."
+      }
+    ]
+  },
+  "keyword_rules": {
+    "matched_keywords": "Hard skills and industry phrases from the JD that appear in the CV. Matching is case-insensitive and allows explicit alias equivalents declared in the JD (for example 'GA4' for 'Google Analytics 4').",
+    "missing_keywords": "Hard skills and industry phrases from the JD that do not appear in the CV and have no alias match."
+  }
+}

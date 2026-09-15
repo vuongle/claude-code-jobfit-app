@@ -1,0 +1,42 @@
+{
+  "case_id": "case-01-backend-strong",
+  "band": "strong",
+  "overall_score_range": [78, 93],
+  "category_score_ranges": {
+    "Hard Skills Match": [90, 100],
+    "Experience Match": [80, 100],
+    "ATS Keywords": [55, 90],
+    "Quantified Achievements": [60, 100],
+    "Formatting & Length": [75, 100]
+  },
+  "required_matched_keywords": [
+    "Python",
+    "FastAPI",
+    "PostgreSQL",
+    "Redis",
+    "Docker",
+    "Kubernetes",
+    "AWS",
+    "Terraform",
+    "Kafka",
+    "Stripe",
+    "microservices",
+    "REST API",
+    "payment gateway",
+    "idempotent",
+    "event-driven",
+    "GitHub Actions"
+  ],
+  "required_missing_keywords": [
+    "PCI DSS",
+    "Prometheus"
+  ],
+  "required_gaps": [
+    {
+      "topic": "pci-dss-compliance",
+      "min_severity": "low",
+      "evidence_must_include_any": ["PCI DSS", "compliance"]
+    }
+  ],
+  "max_high_severity_gaps": 1
+}

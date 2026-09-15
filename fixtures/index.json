@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "case-01-backend-strong",
+      "band": "strong",
+      "role": "Senior Backend Engineer",
+      "company": "Northgate Pay",
+      "cv": "case-01-backend-strong/cv.md",
+      "jd": "case-01-backend-strong/jd.md",
+      "expected": "case-01-backend-strong/expected.json",
+      "description": "Senior backend engineer with 7 years of Python and payments experience applying for a senior payments backend role; strong match."
+    },
+    {
+      "id": "case-02-marketing-partial",
+      "band": "partial",
+      "role": "Digital Marketing Manager",
+      "company": "Lumen Retail",
+      "cv": "case-02-marketing-partial/cv.md",
+      "jd": "case-02-marketing-partial/jd.md",
+      "expected": "case-02-marketing-partial/expected.json",
+      "cv_pdf": "case-02-marketing-partial/cv.pdf",
+      "description": "Digital marketing specialist applying for a marketing manager role; covers SEO, ads and content but misses team management, marketing automation and large-budget ownership. Designated demo case."
+    },
+    {
+      "id": "case-03-data-weak",
+      "band": "weak",
+      "role": "Data Scientist",
+      "company": "Finlytics",
+      "cv": "case-03-data-weak/cv.md",
+      "jd": "case-03-data-weak/jd.md",
+      "expected": "case-03-data-weak/expected.json",
+      "description": "Data analyst with SQL and dashboard experience applying for a data scientist role; missing machine learning, statistical modelling and ML tooling; weak match."
+    }
+  ]
+}
