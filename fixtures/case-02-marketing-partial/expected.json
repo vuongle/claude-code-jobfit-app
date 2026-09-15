@@ -1,0 +1,49 @@
+{
+  "case_id": "case-02-marketing-partial",
+  "band": "partial",
+  "overall_score_range": [52, 70],
+  "category_score_ranges": {
+    "Hard Skills Match": [45, 80],
+    "Experience Match": [35, 65],
+    "ATS Keywords": [45, 75],
+    "Quantified Achievements": [65, 100],
+    "Formatting & Length": [75, 100]
+  },
+  "required_matched_keywords": [
+    "SEO",
+    "Google Ads",
+    "Meta Ads",
+    "email",
+    "GA4",
+    "content strategy",
+    "A/B testing",
+    "cost per acquisition",
+    "organic traffic",
+    "e-commerce"
+  ],
+  "required_missing_keywords": [
+    "HubSpot",
+    "marketing automation",
+    "CRM",
+    "attribution",
+    "Looker Studio"
+  ],
+  "required_gaps": [
+    {
+      "topic": "team-management",
+      "min_severity": "medium",
+      "evidence_must_include_any": ["team", "management", "managing", "leadership"]
+    },
+    {
+      "topic": "marketing-automation",
+      "min_severity": "medium",
+      "evidence_must_include_any": ["marketing automation", "HubSpot", "Marketo"]
+    },
+    {
+      "topic": "budget-scale",
+      "min_severity": "medium",
+      "evidence_must_include_any": ["budget"]
+    }
+  ],
+  "max_high_severity_gaps": 4
+}

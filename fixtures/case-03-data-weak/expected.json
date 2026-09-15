@@ -1,0 +1,52 @@
+{
+  "case_id": "case-03-data-weak",
+  "band": "weak",
+  "overall_score_range": [25, 47],
+  "category_score_ranges": {
+    "Hard Skills Match": [10, 40],
+    "Experience Match": [20, 55],
+    "ATS Keywords": [15, 50],
+    "Quantified Achievements": [60, 100],
+    "Formatting & Length": [70, 100]
+  },
+  "required_matched_keywords": [
+    "SQL",
+    "Python",
+    "pandas"
+  ],
+  "required_missing_keywords": [
+    "machine learning",
+    "scikit-learn",
+    "TensorFlow",
+    "statistical modelling",
+    "A/B test",
+    "Airflow",
+    "MLflow",
+    "AWS",
+    "GCP",
+    "feature engineering"
+  ],
+  "required_gaps": [
+    {
+      "topic": "machine-learning-experience",
+      "min_severity": "medium",
+      "evidence_must_include_any": ["machine learning", "model", "predictive"]
+    },
+    {
+      "topic": "deep-learning-framework",
+      "min_severity": "medium",
+      "evidence_must_include_any": ["TensorFlow", "PyTorch", "deep learning"]
+    },
+    {
+      "topic": "experiment-design",
+      "min_severity": "medium",
+      "evidence_must_include_any": ["A/B", "experiment"]
+    },
+    {
+      "topic": "cloud-and-ml-tooling",
+      "min_severity": "medium",
+      "evidence_must_include_any": ["cloud", "AWS", "GCP", "Airflow", "MLflow"]
+    }
+  ],
+  "max_high_severity_gaps": 6
+}
