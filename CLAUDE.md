@@ -106,3 +106,17 @@ Score breakdown renders as a ring for the overall figure and horizontal bars per
 - `case-03-data-weak` — data analyst applying for a data scientist role, weak match
 
 `fixtures/index.json` lists all three. A pypdf parity test at `backend/tests/test_pdf_md_parity.py` guards the extractor → scorer seam for case-02 by asserting canonical text extracted from `cv.pdf` matches canonical text of `cv.md`; deterministic scoring turns that into "same score".
+
+### #2 — V1 technical foundation (PR #6)
+
+Whole app skeleton up. FastAPI serves the API and the built frontend from a single process on port 8000.
+
+- `POST /api/session` — fake login; creates a `users` row from a name and returns the id
+- `POST /api/uploads` — multipart PDF + `jd_text`; extracts text with pypdf and stores the pair in `uploads`
+- `GET /api/health` — liveness probe
+
+Frontend is Next.js 15 App Router with Tailwind and `output: 'export'`. `/` is the login page (name field, localStorage session). `/app` is the authenticated screen: CV upload, JD paste, extracted-text preview, and a disabled Score button that flags scoring as the next ticket. Visual tokens from the table above flow through CSS variables so all colour choices live in one place.
+
+SQLite lives at `/data/jobfit.sqlite3` inside the container. Schema (`users`, `uploads`) is dropped and recreated on every boot — that changes when real accounts land.
+
+Packaging is a single multi-stage Docker image (node builds the frontend, python serves both). `scripts/start-{mac,linux}.sh` / `scripts/start-windows.ps1` and matching `stop-*` counterparts wrap `docker build` and `docker run` with a `jobfit-data` named volume. The catch-all static route also serves the export's RSC `.txt` payloads and the built `404.html`, so in-app navigation stays client-side and unknown paths get a real 404 page. Scoring itself is not wired up yet.
