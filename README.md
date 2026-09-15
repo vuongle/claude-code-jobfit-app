@@ -1,23 +1,18 @@
-# claude-code-jobfit-app
+# JobFit
 
-https://www.youtube.com/watch?v=2zBGKaYmSX0
-https://github.com/tam1511/jobfit
+Close the gap between the CV you have and the role you want. Upload a CV, paste a job description, and see how well they match.
 
-## Accounts created for this project:
+## Run
 
-### Openrouter (https://openrouter.ai)
+```
+scripts/start-windows.ps1      # or start-mac.sh / start-linux.sh
+```
 
-Log by gg then get api key
+The app answers on http://localhost:8000. `scripts/stop-*` removes the container.
 
-### context7 (https://github.com/upstash/context7)
+## Develop
 
-if using claude code extension: Log by gg and it will be auto authenticated
-if using claude cli: Use api key to install
-url: https://context7.com/dashboard
-key name: claude-code-jobfit-app
-key value: CONTEXT7_API_KEY
+- `backend/` — FastAPI + SQLite. Install `backend/requirements.txt` into a venv, run `pytest` in `backend/`. Running the server outside Docker requires `JOBFIT_DB_PATH`; the container default is `/data/jobfit.sqlite3`.
+- `frontend/` — Next.js, statically exported and served by FastAPI. `npm install && npm run build` produces `out/`.
 
-### github token for this project only
-
-key name: claude-code-jobfit-app token
-key value:GITHUB_TOKEN
+Packaging: one Docker image (node builds the frontend, python serves it). SQLite lives in the `jobfit-data` volume.
