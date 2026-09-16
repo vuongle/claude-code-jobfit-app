@@ -55,11 +55,12 @@ All scoring and rewriting know-how lives in the `cv-rubric` skill. That skill is
 
 The skill contains no code. It describes what a correct result looks like, not how to produce one. The how belongs here:
 
-- Model calls go through OpenRouter. `OPENROUTER_API_KEY` lives in `.env` at the project root
+- Model calls speak the OpenAI-compatible chat-completions protocol. By default they go to OpenRouter and are authorised with `OPENROUTER_API_KEY` in `.env` at the project root. Any OpenAI-compatible server works too: set `LLM_BASE_URL` (for example a local Ollama instance) and `LLM_MODEL`; `LLM_API_KEY` overrides auth when the endpoint needs one
 - Scoring and rewriting are two separate calls with two separate schemas. Do not merge them into one
 - Both use Structured Outputs, so the frontend can render the breakdown, the gap list and the keyword sets without parsing free text
 - Scoring must be deterministic. The same CV and the same JD produce the same score, every time. `fixtures/` exists to prove that, and a change that breaks it is a broken change
 - Anything that can be computed in code is computed in code. Do not ask the model for work that arithmetic or string matching already answers
+- Scoring splits into two model calls: a JD analysis (skills, phrases, experience requirements) and a CV judgment (experience, formatting, gaps, half-credits). Everything else — keyword matching, bullet quantification, weighting, bands — is code
 
 Do not hand-roll a scoring prompt or a rewrite prompt. If the skill does not cover a case, extend the skill rather than working around it.
 
@@ -117,6 +118,20 @@ Whole app skeleton up. FastAPI serves the API and the built frontend from a sing
 
 Frontend is Next.js 15 App Router with Tailwind and `output: 'export'`. `/` is the login page (name field, localStorage session). `/app` is the authenticated screen: CV upload, JD paste, extracted-text preview, and a disabled Score button that flags scoring as the next ticket. Visual tokens from the table above flow through CSS variables so all colour choices live in one place.
 
-SQLite lives at `/data/jobfit.sqlite3` inside the container. Schema (`users`, `uploads`) is dropped and recreated on every boot — that changes when real accounts land.
+SQLite lives at `/data/jobfit.sqlite3` inside the container. Schema (`users`, `uploads`, `scores`) is dropped and recreated on every boot — that changes when real accounts land.
 
-Packaging is a single multi-stage Docker image (node builds the frontend, python serves both). `scripts/start-{mac,linux}.sh` / `scripts/start-windows.ps1` and matching `stop-*` counterparts wrap `docker build` and `docker run` with a `jobfit-data` named volume. The catch-all static route also serves the export's RSC `.txt` payloads and the built `404.html`, so in-app navigation stays client-side and unknown paths get a real 404 page. Scoring itself is not wired up yet.
+### #3 — Chấm điểm và tối ưu CV (part 1: scoring core, in review)
+
+Scoring is wired up. `POST /api/score` scores a stored upload and returns the cv-rubric structured result: overall score, band, per-category breakdown with evidence, gaps with severity and suggestion, matched/missing keywords, and the weak-bullet list.
+
+The pipeline is hybrid, by the compute-in-code rule:
+
+- Code computes literal keyword matching (case-insensitive, alias-aware, word-boundary so Java does not match JavaScript), the quantified-bullet ratio (any concrete non-year number counts), the weighted overall, and the band
+- Two model calls at temperature 0 cover the judgment: one analyses the JD into short canonical keywords and experience requirements, one judges experience/formatting deductions, half-credits for adjacent skills, and gaps. Prompts quote `rubric.json` verbatim
+- `backend/app/llm.py` speaks the OpenAI-compatible chat-completions protocol: OpenRouter by default, or any OpenAI-compatible server via `LLM_BASE_URL`/`LLM_MODEL` in `.env` (the start scripts pass `--env-file .env` to the container)
+
+The `/app` screen now scores on click and renders the result: score ring, per-category bars, keyword chips, gap cards, and the user's own CV annotated inline — matched keywords in strong green, non-quantified bullets in partial amber, missing keywords as weak-red chips above the CV.
+
+Tests: unit tests cover the code-computed parts and schema assembly; API tests fake the model; `backend/tests/test_scoring_fixtures.py` runs all three fixture cases against a live endpoint (skipped without `OPENROUTER_API_KEY`/`LLM_BASE_URL`) and asserts the `expected.json` ranges, required keywords and gaps, plus score repeatability. Still open on this ticket: JD link fetching, the Optimise conversation, live preview, and download — planned as two follow-up PRs.
+
+Packaging is a single multi-stage Docker image (node builds the frontend, python serves both). `scripts/start-{mac,linux}.sh` / `scripts/start-windows.ps1` and matching `stop-*` counterparts wrap `docker build` and `docker run` with a `jobfit-data` named volume. The catch-all static route also serves the export's RSC `.txt` payloads and the built `404.html`, so in-app navigation stays client-side and unknown paths get a real 404 page.

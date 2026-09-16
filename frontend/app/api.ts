@@ -34,3 +34,44 @@ export async function uploadCv(
   }
   return (await response.json()) as UploadResult;
 }
+
+export interface ScoreBreakdownItem {
+  category: string;
+  score: number;
+  weight: number;
+  evidence: string;
+}
+
+export interface ScoreGap {
+  severity: "high" | "medium" | "low";
+  evidence: string;
+  suggestion: string;
+}
+
+export interface ScoreResult {
+  id: number;
+  upload_id: number;
+  overall_score: number;
+  band: string;
+  breakdown: ScoreBreakdownItem[];
+  gaps: ScoreGap[];
+  matched_keywords: string[];
+  missing_keywords: string[];
+  weak_bullets: string[];
+}
+
+export async function scoreUpload(uploadId: number): Promise<ScoreResult> {
+  const response = await fetch("/api/score", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ upload_id: uploadId }),
+  });
+  if (!response.ok) {
+    const detail = await response
+      .json()
+      .then((data) => data.detail)
+      .catch(() => null);
+    throw new Error(typeof detail === "string" ? detail : `Scoring failed (${response.status})`);
+  }
+  return (await response.json()) as ScoreResult;
+}
