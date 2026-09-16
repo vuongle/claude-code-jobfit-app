@@ -2,16 +2,19 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { UploadResult, uploadCv } from "../api";
+import { ScoreResult, UploadResult, scoreUpload, uploadCv } from "../api";
 import { clearUserId, getUserId } from "../session";
+import ScoreResultView from "../ScoreResult";
 
 export default function AppPage() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [jdText, setJdText] = useState("");
   const [result, setResult] = useState<UploadResult | null>(null);
+  const [score, setScore] = useState<ScoreResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [scoring, setScoring] = useState(false);
 
   useEffect(() => {
     if (getUserId() === null) {
@@ -24,6 +27,7 @@ export default function AppPage() {
     if (!file) return;
     setError(null);
     setResult(null);
+    setScore(null);
     setBusy(true);
     try {
       const userId = getUserId();
@@ -33,6 +37,20 @@ export default function AppPage() {
       setError(exc instanceof Error ? exc.message : "Something went wrong.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleScore() {
+    if (!result) return;
+    setError(null);
+    setScore(null);
+    setScoring(true);
+    try {
+      setScore(await scoreUpload(result.id));
+    } catch (exc) {
+      setError(exc instanceof Error ? exc.message : "Something went wrong.");
+    } finally {
+      setScoring(false);
     }
   }
 
@@ -61,7 +79,10 @@ export default function AppPage() {
           <input
             type="file"
             accept=".pdf,application/pdf"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            onChange={(e) => {
+              setFile(e.target.files?.[0] ?? null);
+              setScore(null);
+            }}
             required
             className="rounded border border-gray-300 px-3 py-2 text-sm"
           />
@@ -101,22 +122,26 @@ export default function AppPage() {
             </h2>
             <button
               type="button"
-              disabled
-              title="Scoring is not wired up yet."
-              className="rounded px-4 py-1.5 text-sm font-medium text-white opacity-50"
-              style={{ background: "var(--muted)" }}
+              onClick={handleScore}
+              disabled={scoring}
+              className="rounded px-4 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+              style={{ background: "var(--primary)" }}
             >
-              Score
+              {scoring ? "Scoring..." : "Score"}
             </button>
           </div>
-          <pre
-            className="mt-2 max-h-96 overflow-auto whitespace-pre-wrap rounded border border-gray-200 bg-gray-50 p-4 text-sm"
-            style={{ color: "var(--ink)" }}
-          >
-            {result.cv_text}
-          </pre>
+          {!score && (
+            <pre
+              className="mt-2 max-h-96 overflow-auto whitespace-pre-wrap rounded border border-gray-200 bg-gray-50 p-4 text-sm"
+              style={{ color: "var(--ink)" }}
+            >
+              {result.cv_text}
+            </pre>
+          )}
         </section>
       )}
+
+      {score && <ScoreResultView result={score} cvText={result?.cv_text ?? ""} />}
     </main>
   );
 }

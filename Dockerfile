@@ -12,6 +12,7 @@ WORKDIR /app
 COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/app/ ./app/
+COPY rubric.json ./
 COPY --from=frontend /src/frontend/out ./frontend_out
 ENV JOBFIT_FRONTEND_DIR=/app/frontend_out
 EXPOSE 8000

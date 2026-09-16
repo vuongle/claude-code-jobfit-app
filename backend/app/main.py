@@ -1,9 +1,10 @@
-"""FastAPI application for JobFit: fake session, PDF upload, health probe.
+"""FastAPI application for JobFit: fake session, PDF upload, scoring, health probe.
 
 Also serves the statically exported Next.js frontend from the same process,
 so the whole app answers on one port.
 """
 
+import json
 import os
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -11,8 +12,9 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import db
+from . import db, scoring
 from .extract import ExtractionError, extract_pdf_text
+from .llm import LLMError
 
 
 class SessionResponse(BaseModel):
@@ -24,6 +26,35 @@ class UploadResponse(BaseModel):
     id: int
     filename: str
     cv_text: str
+
+
+class ScoreRequest(BaseModel):
+    upload_id: int
+
+
+class ScoreBreakdownItem(BaseModel):
+    category: str
+    score: int
+    weight: int
+    evidence: str
+
+
+class ScoreGap(BaseModel):
+    severity: str
+    evidence: str
+    suggestion: str
+
+
+class ScoreResponse(BaseModel):
+    id: int
+    upload_id: int
+    overall_score: int
+    band: str
+    breakdown: list[ScoreBreakdownItem]
+    gaps: list[ScoreGap]
+    matched_keywords: list[str]
+    missing_keywords: list[str]
+    weak_bullets: list[str]
 
 
 class HealthResponse(BaseModel):
@@ -75,6 +106,24 @@ def create_app() -> FastAPI:
         finally:
             conn.close()
         return UploadResponse(id=upload_id, filename=filename, cv_text=cv_text)
+
+    @app.post("/api/score", response_model=ScoreResponse)
+    def score_upload(body: ScoreRequest) -> ScoreResponse:
+        conn = db.connect()
+        try:
+            upload = db.get_upload(conn, body.upload_id)
+            if upload is None:
+                raise HTTPException(status_code=404, detail="Unknown upload.")
+            try:
+                result = scoring.score_texts(upload["cv_text"], upload["jd_text"])
+            except LLMError as exc:
+                raise HTTPException(status_code=503, detail=str(exc)) from exc
+            score_id = db.create_score(
+                conn, body.upload_id, result["overall_score"], json.dumps(result)
+            )
+        finally:
+            conn.close()
+        return ScoreResponse(id=score_id, upload_id=body.upload_id, **result)
 
     _mount_frontend(app)
     return app
