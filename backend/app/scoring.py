@@ -114,11 +114,6 @@ JUDGMENT_SCHEMA = {
 }
 
 BULLET_PREFIX = re.compile(r"^[\s>]*(?:[-*•‣◦⁃·]|\d+[.)])\s+")
-QUANTIFIED = re.compile(
-    r"\d+\s*%|[$€£]\s?\d|\b\d+\s?(?:k|m|x)\b|\b\d+\s?(?:users|customers|clients"
-    r"|people|students|members|requests|articles|posts|campaigns|leads|hours|days|weeks"
-    r"|months|countries|stores|markets|products|reports|dashboards)\b|\b\d{2,3}\b"
-)
 
 MAX_EXPERIENCE_DEDUCTION = 25
 MAX_FORMATTING_DEDUCTION = 15
@@ -186,9 +181,22 @@ def split_bullets(cv_text: str) -> list[str]:
     ]
 
 
+def _has_measure(bullet: str) -> bool:
+    """True when the bullet carries a concrete number that is not a bare year.
+
+    The rubric counts any number representing an outcome, scale or improvement:
+    counts, percentages, durations, currency. A lone year (2020) is a date, not
+    a measure.
+    """
+    return any(
+        not re.fullmatch(r"(?:19|20)\d{2}", match)
+        for match in re.findall(r"\d+", bullet)
+    )
+
+
 def quantified_score(bullets: list[str]) -> tuple[int, list[str]]:
     """Return (percentage of quantified bullets, the non-quantified bullets)."""
-    weak = [b for b in bullets if not QUANTIFIED.search(b.lower())]
+    weak = [b for b in bullets if not _has_measure(b)]
     if not bullets:
         return 0, []
     return round(100 * (len(bullets) - len(weak)) / len(bullets)), weak
@@ -205,13 +213,32 @@ def weighted_deduction_score(deductions: list, cap: int) -> int:
 def analyze_jd(jd_text: str) -> dict:
     system = (
         "You extract structured requirements from job descriptions for a CV scoring "
-        "tool that follows the cv-rubric skill. Hard skills are the tools, languages, "
-        "frameworks and platforms the JD requires; each carries explicit alias "
-        "equivalents (for example GA4 for Google Analytics 4). Industry phrases are "
-        "domain-specific phrases beyond named tools (for example 'cost per acquisition', "
-        "'event-driven architecture'). Include only requirements actually stated or "
-        "clearly implied by the JD. Do not invent requirements. min_years is null when "
-        "the JD states no years of experience."
+        "tool that follows the cv-rubric skill.\n"
+        "hard_skills: the named tools, languages, frameworks, platforms and products "
+        "the JD requires (for example Stripe, Kubernetes, HubSpot, GA4), each with "
+        "explicit alias equivalents (GA4 for Google Analytics 4). Use canonical names. "
+        "When the JD pairs a product with its generic category ('a CRM such as "
+        "Salesforce'), extract the category as its own term too ('CRM').\n"
+        "industry_phrases: the short domain terminology an applicant tracking system "
+        "would search for, beyond named tools. Rules:\n"
+        "- 1 to 4 words, and prefer the shortest form that still names the concept: "
+        "'REST API', 'idempotent' (not 'idempotent flows'), 'event-driven' (not "
+        "'event-driven architecture'), 'payment gateway', 'organic traffic', "
+        "'e-commerce', 'A/B testing', 'cost per acquisition'.\n"
+        "- Copy the JD's core term verbatim; never paraphrase, never merge into a "
+        "requirement sentence, never append qualifiers such as 'at scale' or 'such "
+        "as Salesforce', never include parenthetical lists.\n"
+        "- Prefer the plain noun when the JD leans on a generic channel or concept "
+        "repeatedly: 'email', 'CRM', 'budget', 'attribution', 'segmentation'.\n"
+        "- Extract only concrete, repeatable terms (roughly 8 to 15 phrases), not "
+        "descriptive clauses like 'checkout and settlement pipelines' or 'lifecycle "
+        "flows' unless that exact phrase is established industry terminology.\n"
+        "experience: min_years is an integer or null when the JD states no years of "
+        "experience; seniority is the level the JD targets; core_domain is the "
+        "industry or domain in one or two words; expects_leadership is true when the "
+        "JD expects managing people.\n"
+        "Include only requirements actually stated or clearly implied by the JD. Do "
+        "not invent requirements."
     )
     return llm.structured_call(system, jd_text, JD_ANALYSIS_SCHEMA)
 
@@ -256,7 +283,7 @@ def _evidence_for_skills(total: int, matched: list, half: list) -> str:
 
 def _evidence_for_keywords(total: int, matched: list) -> str:
     detail = f": {', '.join(matched)}." if matched else "."
-    return f"{len(matched)} of {total} industry phrases appear in the CV{detail}"
+    return f"{len(matched)} of {total} keywords (hard skills and industry phrases) appear in the CV{detail}"
 
 
 def score_texts(cv_text: str, jd_text: str) -> dict:
@@ -282,10 +309,13 @@ def score_texts(cv_text: str, jd_text: str) -> dict:
         else 100
     )
 
+    # ATS Keywords counts the full keyword set (hard skills + industry phrases),
+    # per rubric.json keyword_rules which defines matched_keywords as exactly that
+    # merge. Hard Skills Match scores tool coverage separately.
     all_phrases = len(matches["matched_phrases"]) + len(matches["missing_phrases"])
-    keywords_score = (
-        round(100 * len(matches["matched_phrases"]) / all_phrases) if all_phrases else 100
-    )
+    all_keywords = len(analysis["hard_skills"]) + all_phrases
+    keywords_matched = len(matches["matched_skills"]) + len(matches["matched_phrases"])
+    keywords_score = round(100 * keywords_matched / all_keywords) if all_keywords else 100
 
     bullets = split_bullets(cv_text)
     quant_score, weak_bullets = quantified_score(bullets)
@@ -300,7 +330,7 @@ def score_texts(cv_text: str, jd_text: str) -> dict:
     scores = {
         CATEGORY_SKILLS: (skills_score, _evidence_for_skills(total_skills, matches["matched_skills"], half_names)),
         CATEGORY_EXPERIENCE: (experience_score, judgment["experience_evidence"]),
-        CATEGORY_KEYWORDS: (keywords_score, _evidence_for_keywords(all_phrases, matches["matched_phrases"])),
+        CATEGORY_KEYWORDS: (keywords_score, _evidence_for_keywords(all_keywords, matches["matched_skills"] + matches["matched_phrases"])),
         CATEGORY_QUANTIFIED: (
             quant_score,
             f"{len(bullets) - len(weak_bullets)} of {len(bullets)} bullets contain a "

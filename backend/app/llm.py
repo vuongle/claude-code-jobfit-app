@@ -1,7 +1,10 @@
-"""Minimal OpenRouter client for structured model calls.
+"""Minimal LLM client for structured model calls.
 
-The scoring prompts describe what a correct result looks like (the rubric and
-the cv-rubric skill); this module only handles transport and parsing.
+Speaks the OpenAI-compatible chat-completions protocol, so it works with
+OpenRouter out of the box and with any OpenAI-compatible server (for example
+a local Ollama instance) via LLM_BASE_URL. The scoring prompts describe what
+a correct result looks like (the rubric and the cv-rubric skill); this module
+only handles transport and parsing.
 """
 
 import json
@@ -9,8 +12,9 @@ import os
 
 import httpx
 
-OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_MODEL = "openai/gpt-4.1-mini"
+DEFAULT_TIMEOUT = 120
 
 
 class LLMError(Exception):
@@ -31,16 +35,35 @@ def load_env(path: str | None = None) -> None:
             os.environ.setdefault(key.strip(), value.strip())
 
 
+def base_url() -> str:
+    return os.environ.get("LLM_BASE_URL", DEFAULT_BASE_URL).rstrip("/")
+
+
 def model_name() -> str:
-    return os.environ.get("OPENROUTER_MODEL", DEFAULT_MODEL)
+    return os.environ.get("LLM_MODEL", DEFAULT_MODEL)
+
+
+def api_key() -> str | None:
+    """Auth key for the configured endpoint.
+
+    LLM_API_KEY always wins. The documented OPENROUTER_API_KEY is only used
+    against the OpenRouter default, so a custom server never receives it.
+    """
+    explicit = os.environ.get("LLM_API_KEY")
+    if explicit:
+        return explicit
+    if base_url() == DEFAULT_BASE_URL:
+        return os.environ.get("OPENROUTER_API_KEY")
+    return None
 
 
 def structured_call(system: str, user: str, schema: dict) -> dict:
     """Run one chat completion with Structured Outputs and return the parsed JSON."""
     load_env()
-    api_key = os.environ.get("OPENROUTER_API_KEY")
-    if not api_key:
+    key = api_key()
+    if not key and base_url() == DEFAULT_BASE_URL:
         raise LLMError("OPENROUTER_API_KEY is not set.")
+    headers = {"Authorization": f"Bearer {key}"} if key else {}
     body = {
         "model": model_name(),
         "temperature": 0,
@@ -59,10 +82,10 @@ def structured_call(system: str, user: str, schema: dict) -> dict:
     }
     try:
         response = httpx.post(
-            OPENROUTER_URL,
-            headers={"Authorization": f"Bearer {api_key}"},
+            f"{base_url()}/chat/completions",
+            headers=headers,
             json=body,
-            timeout=120,
+            timeout=float(os.environ.get("LLM_TIMEOUT", DEFAULT_TIMEOUT)),
         )
         response.raise_for_status()
         content = response.json()["choices"][0]["message"]["content"]
